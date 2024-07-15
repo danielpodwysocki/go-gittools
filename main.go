@@ -1,7 +1,10 @@
 package main
 
-import "github.com/danielpodwysocki/go-gittools/cmd"
+import (
+	"github.com/danielpodwysocki/go-gittools/internal"
+)
 
 func main() {
-	cmd.Parse()
+	// cmd.Parse()
+	internal.AutoMerge("https://github.com/git-fixtures/basic.git", "https://github.com/git-fixtures/basic.git")
 }
