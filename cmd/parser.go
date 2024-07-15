@@ -1,7 +1,9 @@
 package cmd
 
-import "fmt"
+import (
+	"fmt"
+)
 
 func Parse() {
-	fmt.Printf("Hey there")
+	fmt.Println("yo")
 }
