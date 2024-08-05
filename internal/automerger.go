@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
 )
 
 func getRepoNameFromURL(repo_url string) string {
@@ -16,18 +17,49 @@ func getRepoNameFromURL(repo_url string) string {
 	return repo_name
 }
 
-func AutoMerge(fork_repo_url string, origin_repo_url string) {
+func AutoMerge(forked_repo_url string, parent_origin_repo_url string) {
 	clone_root := "/tmp/foo/"
 
-	err := prepRepo(fork_repo_url, clone_root+getRepoNameFromURL(fork_repo_url))
+	err := prepRepo(forked_repo_url, clone_root+getRepoNameFromURL(forked_repo_url))
 	if err != nil {
 		panic(err)
 	}
-	err = prepRepo(origin_repo_url, clone_root+getRepoNameFromURL((origin_repo_url)))
+	err = prepRepo(parent_origin_repo_url, clone_root+getRepoNameFromURL((parent_origin_repo_url)))
 	if err != nil {
 		panic(err)
 	}
 
+	forked_repo, err := git.PlainOpen(clone_root + getRepoNameFromURL(forked_repo_url))
+	if err != nil {
+		panic(err)
+	}
+	err = ensureRemote(forked_repo, "parent_origin", parent_origin_repo_url)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func ensureRemote(repo *git.Repository, remote_name string, remote_url string) error {
+	// Adds a remote if it doesn't exist
+	remotes, err := repo.Remotes()
+	if err != nil {
+		return errors.New("failed to get remotes: " + err.Error())
+	}
+	for _, remote := range remotes {
+		if remote.Config().Name == remote_name {
+			return nil
+		}
+	}
+	_, err = repo.CreateRemote(&config.RemoteConfig{
+		Name: remote_name,
+		URLs: []string{remote_url},
+	})
+
+	if err != nil {
+		return errors.New("failed to create remote: " + err.Error())
+	}
+	log.Printf("Added remote %v with url %v", remote_name, remote_url)
+	return nil
 }
 
 func prepRepo(repo_url string, clone_path string) error {
