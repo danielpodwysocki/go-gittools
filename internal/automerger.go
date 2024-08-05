@@ -9,7 +9,7 @@ import (
 	"github.com/go-git/go-git/v5"
 )
 
-func get_repo_name_from_url(repo_url string) string {
+func getRepoNameFromURL(repo_url string) string {
 
 	repo_url_split := strings.Split(repo_url, "/")
 	repo_name := strings.Trim(repo_url_split[len(repo_url_split)-1], ".git")
@@ -19,11 +19,11 @@ func get_repo_name_from_url(repo_url string) string {
 func AutoMerge(fork_repo_url string, origin_repo_url string) {
 	clone_root := "/tmp/foo/"
 
-	err := prepRepo(fork_repo_url, clone_root+get_repo_name_from_url(fork_repo_url))
+	err := prepRepo(fork_repo_url, clone_root+getRepoNameFromURL(fork_repo_url))
 	if err != nil {
 		panic(err)
 	}
-	err = prepRepo(origin_repo_url, clone_root+get_repo_name_from_url((origin_repo_url)))
+	err = prepRepo(origin_repo_url, clone_root+getRepoNameFromURL((origin_repo_url)))
 	if err != nil {
 		panic(err)
 	}
