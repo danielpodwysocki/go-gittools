@@ -44,6 +44,11 @@ func prepRepo(repo_url string, clone_path string) error {
 		if err != nil {
 			return err
 		}
+		err = pullCurrentBranch(repo)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	}
 	_, err = git.PlainClone(clone_path, false,
@@ -51,7 +56,7 @@ func prepRepo(repo_url string, clone_path string) error {
 			URL: repo_url,
 		})
 	if err != nil {
-		return errors.New("Failed to clone repo for prep: " + err.Error())
+		return errors.New("failed to clone repo for prep: " + err.Error())
 	}
 
 	return nil
@@ -62,7 +67,7 @@ func fetchRepo(repo *git.Repository) error {
 	err := repo.Fetch(&git.FetchOptions{})
 	log.Printf("Fetching repo")
 	if err != nil && err != git.NoErrAlreadyUpToDate {
-		return errors.New("Failed to fetch repo: " + err.Error())
+		return errors.New("failed to fetch repo: " + err.Error())
 	}
 	return nil
 }
@@ -71,12 +76,12 @@ func checkoutBranch(repo *git.Repository, branch_name string) error {
 	// Checks out the branch
 	worktree, err := repo.Worktree()
 	if err != nil {
-		return errors.New("Failed to prep worktree: " + err.Error())
+		return errors.New("failed to prep worktree: " + err.Error())
 	}
 	//branch = fmt.Sprintf("refs/remotes/origin/%v", branch)
 	branch, err := repo.Branch(branch_name)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Failed to get branch %v : %v", branch_name, err))
+		return fmt.Errorf("failed to get branch %v : %v", branch_name, err)
 	}
 	err = worktree.Checkout(&git.CheckoutOptions{
 		// branch.Merge is the refspec
@@ -85,7 +90,7 @@ func checkoutBranch(repo *git.Repository, branch_name string) error {
 	})
 
 	if err != nil {
-		return errors.New("Failed to checkout branch: " + err.Error())
+		return errors.New("failed to checkout branch: " + err.Error())
 	}
 	return nil
 }
@@ -98,20 +103,36 @@ func resetRepo(repo *git.Repository, branch string) error {
 	worktree, err := repo.Worktree()
 
 	if err != nil {
-		return errors.New("Failed to prep worktree: " + err.Error())
+		return errors.New("failed to prep worktree: " + err.Error())
 	}
 	_, err = repo.Branch(branch)
+	if err != nil {
+		return fmt.Errorf("failed to get branch %v : %v", branch, err)
+	}
 	err = worktree.Reset(
 		&git.ResetOptions{
 			Mode: git.HardReset,
 		})
 	if err != nil {
-		return errors.New("Failed to reset repo: " + err.Error())
+		return errors.New("failed to reset repo: " + err.Error())
 	}
 	err = checkoutBranch(repo, branch)
 	if err != nil {
 		return err
 	}
 
+	return nil
+}
+
+func pullCurrentBranch(repo *git.Repository) error {
+	log.Printf("Pulling current branch")
+	worktree, err := repo.Worktree()
+	if err != nil {
+		return errors.New("failed to prep worktree: " + err.Error())
+	}
+	err = worktree.Pull(&git.PullOptions{})
+	if err != nil && err != git.NoErrAlreadyUpToDate {
+		return errors.New("failed to pull repo: " + err.Error())
+	}
 	return nil
 }
