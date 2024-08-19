@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
@@ -17,26 +18,37 @@ func getRepoNameFromURL(repo_url string) string {
 	return repo_name
 }
 
-func AutoMerge(forked_repo_url string, parent_origin_repo_url string) {
+func AutoMerge(forked_repo_url string, parent_origin_repo_url string) error {
 	clone_root := "/tmp/foo/"
 
 	err := prepRepo(forked_repo_url, clone_root+getRepoNameFromURL(forked_repo_url))
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("failed to prep forked/child repo: %v", err)
 	}
 	err = prepRepo(parent_origin_repo_url, clone_root+getRepoNameFromURL((parent_origin_repo_url)))
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("failed to prep parent/origin repo: %v", err)
 	}
 
 	forked_repo, err := git.PlainOpen(clone_root + getRepoNameFromURL(forked_repo_url))
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("failed to open forked/child repo: %v", err)
 	}
 	err = ensureRemote(forked_repo, "parent_origin", parent_origin_repo_url)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("failed to add the parent repo as an origin on the child/fork: %v", err)
 	}
+	today_iso8601 := time.Now().Format(time.RFC3339)
+	//today_iso8601 = strings.Replace(":", "-", today_iso8601, -1)
+	branch_name := "go-gittools-automerge-" + today_iso8601
+	err = forked_repo.CreateBranch(&config.Branch{
+		Name: "testujemy",
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create branch %v: %v", branch_name, err)
+	}
+	return nil
+
 }
 
 func ensureRemote(repo *git.Repository, remote_name string, remote_url string) error {
