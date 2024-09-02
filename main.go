@@ -6,5 +6,5 @@ import (
 
 func main() {
 	// cmd.Parse()
-	internal.AutoMerge("https://github.com/git-fixtures/basic.git", "https://github.com/git-fixtures/basic.git")
+	internal.AutoMerge("https://github.com/git-fixtures/basic.git", "https://github.com/git-fixtures/basic.git", "master", "master")
 }

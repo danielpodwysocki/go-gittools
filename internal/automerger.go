@@ -4,11 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 	"time"
 
+	"github.com/danielpodwysocki/go-gittools/internal/porcelain"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
+	gogsgit "github.com/gogs/git-module"
 )
 
 func getRepoNameFromURL(repo_url string) string {
@@ -18,35 +21,74 @@ func getRepoNameFromURL(repo_url string) string {
 	return repo_name
 }
 
-func AutoMerge(forked_repo_url string, parent_origin_repo_url string) error {
-	clone_root := "/tmp/foo/"
-
-	err := prepRepo(forked_repo_url, clone_root+getRepoNameFromURL(forked_repo_url))
+// todo: finish implementation
+func AutoMerge(child_repo_url string, parent_repo_url string, child_repo_branch string, parent_repo_branch string) error {
+	clone_root, err := os.MkdirTemp("/tmp", "go-gittools-automerge")
 	if err != nil {
-		return fmt.Errorf("failed to prep forked/child repo: %v", err)
+		return fmt.Errorf("failed preparing a temp dir: %v", err)
 	}
-	err = prepRepo(parent_origin_repo_url, clone_root+getRepoNameFromURL((parent_origin_repo_url)))
+
+	child_repo_path := clone_root + "/" + getRepoNameFromURL(child_repo_url)
+	parent_repo_path := clone_root + "/" + getRepoNameFromURL(parent_repo_url)
+
+	err = prepRepo(child_repo_url, child_repo_path)
+	if err != nil {
+		return fmt.Errorf("failed to prep child repo: %v", err)
+	}
+	err = prepRepo(parent_repo_url, parent_repo_path)
 	if err != nil {
 		return fmt.Errorf("failed to prep parent/origin repo: %v", err)
 	}
 
-	forked_repo, err := git.PlainOpen(clone_root + getRepoNameFromURL(forked_repo_url))
+	child_repo, err := git.PlainOpen(child_repo_path)
+	fmt.Println(child_repo_path)
 	if err != nil {
-		return fmt.Errorf("failed to open forked/child repo: %v", err)
+		return fmt.Errorf("failed to open child repo: %v", err)
 	}
-	err = ensureRemote(forked_repo, "parent_origin", parent_origin_repo_url)
+	err = ensureRemote(child_repo, "parent_origin", parent_repo_url)
 	if err != nil {
 		return fmt.Errorf("failed to add the parent repo as an origin on the child/fork: %v", err)
 	}
+
+	err = child_repo.Fetch(&git.FetchOptions{
+		RemoteName: "parent_origin",
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to fetch the parent repo on the child/fork: %v", err)
+	}
+
 	today_iso8601 := time.Now().Format(time.RFC3339)
 	//today_iso8601 = strings.Replace(":", "-", today_iso8601, -1)
-	branch_name := "go-gittools-automerge-" + today_iso8601
-	err = forked_repo.CreateBranch(&config.Branch{
-		Name: "testujemy",
-	})
+	branch_name := "go-gittools-automerge-" + strings.Replace(today_iso8601, ":", "--", -1)
+	branch_from, err := porcelain.GetBranchHash(child_repo, fmt.Sprintf("refs/remotes/origin/%v", child_repo_branch))
+
 	if err != nil {
-		return fmt.Errorf("failed to create branch %v: %v", branch_name, err)
+		return err
 	}
+
+	err = porcelain.CreateAndCheckoutBranch(child_repo, branch_name, branch_from)
+
+	if err != nil {
+		return err
+	}
+	// Useful once go-git supports this:
+	// parentRepoRefStr := fmt.Sprintf("refs/remotes/parent_origin/%v", parent_repo_branch)
+	// targetBranch := plumbing.NewBranchReferenceName(parentRepoRefStr)
+	// targetHash, err := porcelain.GetBranchHash(child_repo, parentRepoRefStr)
+	// targetRef := plumbing.NewHashReference(targetBranch, targetHash)
+
+	// go-git only supports a fast forward merge
+	// ToDo: once the ort/3-way-merge is supported, replace this and get rid of
+	// the extra dependency on real git
+	mergeCommand := gogsgit.NewCommand("merge", fmt.Sprintf("parent_origin/%v", parent_repo_branch))
+	_, err = mergeCommand.RunInDir(child_repo_path)
+
+	// ToDo: verify this is clear enough and we don't actually need stdout/stderr from the above
+	if err != nil {
+		return err
+	}
+
 	return nil
 
 }
@@ -100,7 +142,7 @@ func prepRepo(repo_url string, clone_path string) error {
 			URL: repo_url,
 		})
 	if err != nil {
-		return errors.New("failed to clone repo for prep: " + err.Error())
+		return fmt.Errorf("failed to clone %v repo for prep: %v", repo_url, err.Error())
 	}
 
 	return nil
