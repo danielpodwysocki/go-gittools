@@ -60,14 +60,14 @@ func AutoMerge(child_repo_url string, parent_repo_url string, child_repo_branch 
 
 	today_iso8601 := time.Now().Format(time.RFC3339)
 	//today_iso8601 = strings.Replace(":", "-", today_iso8601, -1)
-	branch_name := "go-gittools-automerge-" + strings.Replace(today_iso8601, ":", "--", -1)
+	automergeBranchName := "go-gittools-automerge-" + strings.Replace(today_iso8601, ":", "--", -1)
 	branch_from, err := porcelain.GetBranchHash(child_repo, fmt.Sprintf("refs/remotes/origin/%v", child_repo_branch))
 
 	if err != nil {
 		return err
 	}
 
-	err = porcelain.CreateAndCheckoutBranch(child_repo, branch_name, branch_from)
+	err = porcelain.CreateAndCheckoutBranch(child_repo, automergeBranchName, branch_from)
 
 	if err != nil {
 		return err
@@ -89,6 +89,16 @@ func AutoMerge(child_repo_url string, parent_repo_url string, child_repo_branch 
 		return err
 	}
 
+	refSpec := config.RefSpec(fmt.Sprintf("refs/heads/%v:refs/remotes/origin/%v", automergeBranchName, automergeBranchName))
+	err = child_repo.Push(&git.PushOptions{
+		RemoteName: "origin",
+		RefSpecs:   []config.RefSpec{refSpec},
+	})
+	if err != nil {
+		return err
+	}
+
+	return fmt.Errorf("finish implementing AutoMerge - needs adding push options and triggering merges across GitHub/Lab/ea for the MVP")
 	return nil
 
 }
