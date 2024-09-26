@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/danielpodwysocki/go-gittools/internal/porcelain"
+	"github.com/danielpodwysocki/go-gittools/internal/repository"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	gogsgit "github.com/gogs/git-module"
@@ -22,7 +23,7 @@ func getRepoNameFromURL(repo_url string) string {
 }
 
 // todo: finish implementation
-func AutoMerge(child_repo_url string, parent_repo_url string, child_repo_branch string, parent_repo_branch string) error {
+func AutoMerge(child_repo_url string, parent_repo_url string, child_repo_branch string, parent_repo_branch string, gitHostRepo repository.GitHostRepo) error {
 	clone_root, err := os.MkdirTemp("/tmp", "go-gittools-automerge")
 	if err != nil {
 		return fmt.Errorf("failed preparing a temp dir: %v", err)
@@ -59,7 +60,6 @@ func AutoMerge(child_repo_url string, parent_repo_url string, child_repo_branch 
 	}
 
 	today_iso8601 := time.Now().Format(time.RFC3339)
-	//today_iso8601 = strings.Replace(":", "-", today_iso8601, -1)
 	automergeBranchName := "go-gittools-automerge-" + strings.Replace(today_iso8601, ":", "--", -1)
 	branch_from, err := porcelain.GetBranchHash(child_repo, fmt.Sprintf("refs/remotes/origin/%v", child_repo_branch))
 
@@ -98,7 +98,10 @@ func AutoMerge(child_repo_url string, parent_repo_url string, child_repo_branch 
 		return err
 	}
 
-	return fmt.Errorf("finish implementing AutoMerge - needs adding push options and triggering merges across GitHub/Lab/ea for the MVP")
+	err = gitHostRepo.TriggerMergeOnGreen(child_repo_url, automergeBranchName, child_repo_branch)
+	if err != nil {
+		return err
+	}
 	return nil
 
 }

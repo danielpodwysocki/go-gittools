@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/danielpodwysocki/go-gittools/internal/repository"
 	"github.com/go-git/go-git/v5"
 )
 
@@ -91,7 +92,9 @@ func prepareForkedReposUnrelatedCommits() (child_repo_path, parent_repo_path str
 func TestAutoMerge(t *testing.T) {
 	child_repo_path, parent_repo_path := prepareForkedReposUnrelatedCommits()
 
-	err := AutoMerge("file://"+child_repo_path, "file://"+parent_repo_path, "master", "master")
+	gitHostRepo := repository.MockGitHostRepo{}
+
+	err := AutoMerge("file://"+child_repo_path, "file://"+parent_repo_path, "master", "master", gitHostRepo)
 	if err != nil {
 		log.Fatalf("AutoMerge failed with: %v", err)
 	}
